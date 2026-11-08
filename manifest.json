@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "sups.proxyctl",
+  "name": "Proxy Control",
+  "version": "1.0.0",
+  "author": "sups",
+  "description": "System proxy mode, Tor exit and Tor identity from the bar, driven by proxyctl.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Proxy Control",
+    "description": "Switch the system between direct and the phone proxy, set the Tor exit, rotate the Tor identity.",
+    "category": "Network",
+    "defaultSection": "right",
+    "allowMultiple": false
+  }
+}
