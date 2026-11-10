@@ -43,11 +43,12 @@ test("parseStatus caps a long address", () => {
   assert.ok(M.parseStatus(JSON.stringify({ addr: "a".repeat(5000) })).addr.length <= 260);
 });
 
-test("barIcon: normal, proxy, proxy down, unknown", () => {
+test("barIcon: normal, proxy, proxy down, tunnel down, unknown", () => {
   const s = M.parseStatus(up);
   assert.equal(M.barIcon(s), "󰒍");
   assert.equal(M.barIcon({ ...s, want: "normal", tunnel: false }), "󰖟");
   assert.equal(M.barIcon({ ...s, reachable: false }), "󰀦");
+  assert.equal(M.barIcon({ ...s, tunnel: false }), "󰀦");
   assert.equal(M.barIcon(M.parseStatus("")), "󰀦");
 });
 
@@ -55,13 +56,21 @@ test("escapeMarkup neutralises tags and entities", () => {
   assert.equal(M.escapeMarkup('<img src="x">&'), "&lt;img src=&quot;x&quot;&gt;&amp;");
 });
 
-test("tooltip never carries raw markup from the address", () => {
+test("tooltip never carries raw markup from the address and reports tunnel state", () => {
   const s = M.parseStatus(JSON.stringify({ addr: "<img src=x>" }));
   assert.ok(!M.tooltip(s).includes("<img"));
+  const down = M.parseStatus(JSON.stringify({ system: { want: "proxy", tunnel: false } }));
+  assert.ok(M.tooltip(down).includes("System: proxy (tunnel down)"));
 });
 
 test("stripAnsi removes colour codes", () => {
   assert.equal(M.stripAnsi("\u001b[31m✘ no proxy address\u001b[0m"), "✘ no proxy address");
+});
+
+test("errorMessage prefers stderr and falls back to stdout", () => {
+  assert.equal(M.errorMessage("\u001b[31m✘ err\u001b[0m\n", "  \u001b[31m✘\u001b[0m out\n"), "✘ err");
+  assert.equal(M.errorMessage("", "  \u001b[31m✘\u001b[0m cannot read cookie\n"), "✘ cannot read cookie");
+  assert.ok(M.errorMessage("x".repeat(500), "").length <= 300);
 });
 
 test("rotateArgs", () => {

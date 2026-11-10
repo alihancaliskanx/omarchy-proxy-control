@@ -40,9 +40,10 @@ Panel {
 
   Process {
     id: actionProc
+    stdout: StdioCollector { id: actionOut; waitForEnd: true }
     stderr: StdioCollector { id: actionErr; waitForEnd: true }
     onExited: function(code) {
-      if (code !== 0) root.message = Model.stripAnsi(actionErr.text).trim().slice(0, 300)
+      if (code !== 0) root.message = Model.errorMessage(actionErr.text, actionOut.text)
       root.refresh()
     }
   }
@@ -100,7 +101,11 @@ Panel {
 
         PanelSeparator { foreground: root.bar.foreground }
 
-        PanelSectionHeader { text: "Tor exit"; foreground: root.bar.foreground; fontFamily: root.bar.fontFamily }
+        PanelSectionHeader {
+          text: root.status.torActive ? "Tor exit · running" : "Tor exit · stopped"
+          foreground: root.bar.foreground
+          fontFamily: root.bar.fontFamily
+        }
         ChoiceRow {
           leftText: "Direct"; leftIcon: "󰖟"; leftActive: root.status.exit === "direct"
           rightText: "Proxy"; rightIcon: "󰒍"; rightActive: root.status.exit === "proxy"
@@ -130,7 +135,10 @@ Panel {
             width: torRow.third
             placeholderText: root.status.rotate > 0 ? root.status.rotate + " s" : "rotate: s"
             inputMethodHints: Qt.ImhDigitsOnly
-            onAccepted: root.run(Model.rotateArgs(text))
+            onAccepted: {
+              root.run(Model.rotateArgs(text))
+              text = ""
+            }
           }
 
           Button {

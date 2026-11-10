@@ -44,7 +44,7 @@ function parseStatus(text) {
 }
 
 function barIcon(s) {
-  if (!s.ok || (s.want === "proxy" && !s.reachable)) return ICON_WARN
+  if (!s.ok || (s.want === "proxy" && (!s.reachable || !s.tunnel))) return ICON_WARN
   return s.tunnel ? ICON_PROXY : ICON_DIRECT
 }
 
@@ -54,7 +54,8 @@ function escapeMarkup(text) {
 
 function tooltip(s) {
   if (!s.ok) return "proxyctl: no status"
-  var lines = ["System: " + s.want + (s.tunnel ? " (tunnel up)" : "")]
+  var state = s.tunnel ? " (tunnel up)" : (s.want === "proxy" ? " (tunnel down)" : "")
+  var lines = ["System: " + s.want + state]
   if (s.addr !== "") lines.push("Proxy: " + escapeMarkup(s.addr) + (s.reachable ? "" : " — not answering"))
   lines.push("Tor: " + (s.torActive ? "running, exit " + s.exit : "not running"))
   if (s.rotate > 0) lines.push("New identity every " + s.rotate + " s")
@@ -63,6 +64,12 @@ function tooltip(s) {
 
 function stripAnsi(text) {
   return String(text).replace(/\u001b\[[0-9;]*m/g, "")
+}
+
+function errorMessage(errText, outText) {
+  var err = stripAnsi(errText).trim()
+  var out = stripAnsi(outText).trim()
+  return (err !== "" ? err : out).slice(0, 300)
 }
 
 function rotateArgs(text) {
