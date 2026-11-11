@@ -43,7 +43,7 @@ Panel {
     stdout: StdioCollector { id: actionOut; waitForEnd: true }
     stderr: StdioCollector { id: actionErr; waitForEnd: true }
     onExited: function(code) {
-      if (code !== 0) root.message = Model.errorMessage(actionErr.text, actionOut.text)
+      root.message = Model.errorMessage(actionErr.text, actionOut.text)
       root.refresh()
     }
   }
@@ -81,6 +81,7 @@ Panel {
     content: PanelKeyCatcher {
       implicitHeight: mainCol.implicitHeight
       anchors.fill: parent
+      blocked: rotateField.activeFocus || addrField.activeFocus
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
 
@@ -102,7 +103,9 @@ Panel {
         PanelSeparator { foreground: root.bar.foreground }
 
         PanelSectionHeader {
-          text: root.status.torActive ? "Tor exit · running" : "Tor exit · stopped"
+          text: root.status.torActive
+              ? "Tor exit · " + (root.status.torIp !== "" ? root.status.torIp : "running")
+              : "Tor exit · stopped"
           foreground: root.bar.foreground
           fontFamily: root.bar.fontFamily
         }
@@ -117,10 +120,10 @@ Panel {
           id: torRow
           width: parent.width
           spacing: Style.space(8)
-          readonly property real third: (width - spacing * 2) / 3
+          readonly property real half: (width - spacing) / 2
 
           Button {
-            width: torRow.third
+            width: torRow.half
             text: "New IP"
             iconText: "󰑐"
             fontSize: Style.font.bodySmall
@@ -132,26 +135,14 @@ Panel {
 
           TextField {
             id: rotateField
-            width: torRow.third
+            width: torRow.half
             placeholderText: root.status.rotate > 0 ? root.status.rotate + " s" : "rotate: s"
             inputMethodHints: Qt.ImhDigitsOnly
+            Keys.onEscapePressed: focus = false
             onAccepted: {
               root.run(Model.rotateArgs(text))
               text = ""
-            }
-          }
-
-          Button {
-            width: torRow.third
-            text: "Tor Browser"
-            iconText: "󰈹"
-            fontSize: Style.font.bodySmall
-            foreground: root.bar.foreground
-            fontFamily: root.bar.fontFamily
-            bordered: true
-            onClicked: {
-              root.close()
-              Quickshell.execDetached(["proxyctl", "browser"])
+              focus = false
             }
           }
         }
@@ -163,9 +154,11 @@ Panel {
           id: addrField
           width: parent.width
           placeholderText: root.status.addr !== "" ? root.status.addr : "host:port"
+          Keys.onEscapePressed: focus = false
           onAccepted: {
             root.run(Model.addrArgs(text))
             text = ""
+            focus = false
           }
         }
 

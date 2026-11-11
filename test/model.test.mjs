@@ -10,7 +10,7 @@ vm.runInNewContext(src, M);
 const up = JSON.stringify({
   addr: "10.0.0.1:8000", proxy_reachable: true,
   system: { want: "proxy", tunnel: true, dns: true, ssh: true },
-  tor: { active: true, exit_want: "proxy", exit: "proxy", control: true, rotate: 20 },
+  tor: { active: true, exit_want: "proxy", exit: "proxy", control: true, rotate: 20, ip: "198.51.100.7" },
 });
 
 test("parseStatus reads every field", () => {
@@ -23,6 +23,7 @@ test("parseStatus reads every field", () => {
   assert.equal(s.torActive, true);
   assert.equal(s.exit, "proxy");
   assert.equal(s.rotate, 20);
+  assert.equal(s.torIp, "198.51.100.7");
 });
 
 test("parseStatus rejects garbage", () => {
