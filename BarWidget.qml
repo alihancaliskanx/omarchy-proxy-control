@@ -14,17 +14,25 @@ Panel {
 
   property var status: Model.parseStatus("")
   property string message: ""
+  property string pendingAction: ""
+  property bool pendingRefresh: false
+  readonly property bool actionRunning: actionProc.running
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
   function refresh() {
-    if (!statusProc.running) statusProc.running = true
+    if (statusProc.running) {
+      root.pendingRefresh = true
+    } else {
+      statusProc.running = true
+    }
   }
 
-  function run(args) {
+  function run(args, actionKey) {
     if (actionProc.running) return
     root.message = ""
+    root.pendingAction = actionKey || ""
     actionProc.command = ["proxyctl"].concat(args)
     actionProc.running = true
   }
@@ -34,7 +42,13 @@ Panel {
     command: ["proxyctl", "status", "--json"]
     stdout: StdioCollector {
       waitForEnd: true
-      onStreamFinished: root.status = Model.parseStatus(text)
+      onStreamFinished: {
+        root.status = Model.parseStatus(text)
+        if (root.pendingRefresh) {
+          root.pendingRefresh = false
+          statusProc.running = true
+        }
+      }
     }
   }
 
@@ -43,13 +57,14 @@ Panel {
     stdout: StdioCollector { id: actionOut; waitForEnd: true }
     stderr: StdioCollector { id: actionErr; waitForEnd: true }
     onExited: function(code) {
+      root.pendingAction = ""
       root.message = Model.errorMessage(actionErr.text, actionOut.text)
       root.refresh()
     }
   }
 
   Timer {
-    interval: 5000
+    interval: root.opened ? 3000 : 15000
     running: true
     repeat: true
     triggeredOnStart: true
@@ -65,7 +80,13 @@ Panel {
     text: Model.barIcon(root.status)
     active: root.opened || root.status.tunnel
     tooltipText: Model.tooltip(root.status)
-    onPressed: function(b) { root.toggle() }
+    onPressed: function(b) {
+      if (b === Qt.MiddleButton) {
+        root.run(["system", root.status.tunnel ? "normal" : "proxy"], root.status.tunnel ? "sys:normal" : "sys:proxy")
+      } else {
+        root.toggle()
+      }
+    }
   }
 
   KeyboardPanel {
@@ -94,10 +115,14 @@ Panel {
 
         PanelSectionHeader { text: "System"; foreground: root.bar.foreground; fontFamily: root.bar.fontFamily }
         ChoiceRow {
-          leftText: "Normal"; leftIcon: "󰖟"; leftActive: !root.status.tunnel
-          rightText: "Proxy"; rightIcon: "󰒍"; rightActive: root.status.tunnel
-          onLeftClicked: root.run(["system", "normal"])
-          onRightClicked: root.run(["system", "proxy"])
+          leftText: "Normal"; leftIcon: "󰖟"
+          leftActive: root.pendingAction === "sys:normal" || (root.pendingAction !== "sys:proxy" && !root.status.tunnel)
+          leftPending: root.pendingAction === "sys:normal"
+          rightText: "Proxy"; rightIcon: "󰒍"
+          rightActive: root.pendingAction === "sys:proxy" || (root.pendingAction !== "sys:normal" && root.status.tunnel)
+          rightPending: root.pendingAction === "sys:proxy"
+          onLeftClicked: root.run(["system", "normal"], "sys:normal")
+          onRightClicked: root.run(["system", "proxy"], "sys:proxy")
         }
 
         PanelSeparator { foreground: root.bar.foreground }
@@ -110,10 +135,14 @@ Panel {
           fontFamily: root.bar.fontFamily
         }
         ChoiceRow {
-          leftText: "Direct"; leftIcon: "󰖟"; leftActive: root.status.exit === "direct"
-          rightText: "Proxy"; rightIcon: "󰒍"; rightActive: root.status.exit === "proxy"
-          onLeftClicked: root.run(["tor", "exit", "direct"])
-          onRightClicked: root.run(["tor", "exit", "proxy"])
+          leftText: "Direct"; leftIcon: "󰖟"
+          leftActive: root.pendingAction === "tor:direct" || (root.pendingAction !== "tor:proxy" && root.status.exit === "direct")
+          leftPending: root.pendingAction === "tor:direct"
+          rightText: "Proxy"; rightIcon: "󰒍"
+          rightActive: root.pendingAction === "tor:proxy" || (root.pendingAction !== "tor:direct" && root.status.exit === "proxy")
+          rightPending: root.pendingAction === "tor:proxy"
+          onLeftClicked: root.run(["tor", "exit", "direct"], "tor:direct")
+          onRightClicked: root.run(["tor", "exit", "proxy"], "tor:proxy")
         }
 
         Row {
@@ -124,23 +153,26 @@ Panel {
 
           Button {
             width: torRow.half
-            text: "New IP"
+            text: root.pendingAction === "tor:newip" ? "Rotating..." : "New IP"
             iconText: "󰑐"
+            iconSpinning: root.pendingAction === "tor:newip"
+            enabled: !root.actionRunning
             fontSize: Style.font.bodySmall
             foreground: root.bar.foreground
             fontFamily: root.bar.fontFamily
             bordered: true
-            onClicked: root.run(["tor", "newip"])
+            onClicked: root.run(["tor", "newip"], "tor:newip")
           }
 
           TextField {
             id: rotateField
             width: torRow.half
+            enabled: !root.actionRunning
             placeholderText: root.status.rotate > 0 ? root.status.rotate + " s" : "rotate: s"
             inputMethodHints: Qt.ImhDigitsOnly
             Keys.onEscapePressed: focus = false
             onAccepted: {
-              root.run(Model.rotateArgs(text))
+              root.run(Model.rotateArgs(text), "tor:rotate")
               text = ""
               focus = false
             }
@@ -153,20 +185,22 @@ Panel {
         TextField {
           id: addrField
           width: parent.width
+          enabled: !root.actionRunning
           placeholderText: root.status.addr !== "" ? root.status.addr : "host:port"
           Keys.onEscapePressed: focus = false
           onAccepted: {
-            root.run(Model.addrArgs(text))
+            root.run(Model.addrArgs(text), "sys:addr")
             text = ""
             focus = false
           }
         }
 
         PlainLine {
-          text: root.message !== "" ? root.message
+          text: root.actionRunning && root.pendingAction !== "" ? "Applying changes..."
+              : (root.message !== "" ? root.message
               : (root.status.addr === "" ? "No address set"
-              : (root.status.reachable ? "Proxy answers" : "Proxy does not answer"))
-          opacity: root.message !== "" ? 1 : 0.65
+              : (root.status.reachable ? "Proxy answers" : "Proxy does not answer")))
+          opacity: (root.actionRunning || root.message !== "") ? 1 : 0.65
         }
       }
     }
@@ -186,9 +220,11 @@ Panel {
     property string leftText
     property string leftIcon
     property bool leftActive
+    property bool leftPending: false
     property string rightText
     property string rightIcon
     property bool rightActive
+    property bool rightPending: false
     signal leftClicked()
     signal rightClicked()
 
@@ -200,6 +236,8 @@ Panel {
       width: choice.half
       text: choice.leftText
       iconText: choice.leftIcon
+      iconSpinning: choice.leftPending
+      enabled: !root.actionRunning || choice.leftPending
       fontSize: Style.font.bodySmall
       foreground: root.bar.foreground
       fontFamily: root.bar.fontFamily
@@ -212,6 +250,8 @@ Panel {
       width: choice.half
       text: choice.rightText
       iconText: choice.rightIcon
+      iconSpinning: choice.rightPending
+      enabled: !root.actionRunning || choice.rightPending
       fontSize: Style.font.bodySmall
       foreground: root.bar.foreground
       fontFamily: root.bar.fontFamily
