@@ -1,8 +1,9 @@
 # omarchy-proxy-control
 
 An Omarchy bar widget for `proxyctl`: switch the system between a direct
-connection and the phone HTTP proxy, set how Tor reaches its first relay, and
-ask for a new Tor identity or rotate it on a timer.
+connection and the phone proxy, toggle Discord DPI bypass (`NoDPI`), set how
+Tor reaches its first relay, and ask for a new Tor identity or rotate it on a
+timer.
 
 The widget holds no logic of its own. It reads `proxyctl status --json` every
 five seconds and runs `proxyctl` for every action. Actions that need root show

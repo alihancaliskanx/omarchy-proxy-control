@@ -23,8 +23,10 @@ function parseStatus(text) {
     d = null
   }
   if (!d || typeof d !== "object") return { ok: false, addr: "", reachable: false, want: "normal", tunnel: false,
-    dns: false, ssh: false, torActive: false, exitWant: "", exit: "", control: false, rotate: 0, torIp: "" }
+    dns: false, ssh: false, nodpiWant: "off", nodpiActive: false,
+    torActive: false, exitWant: "", exit: "", control: false, rotate: 0, torIp: "" }
   var sys = d.system && typeof d.system === "object" ? d.system : {}
+  var nodpi = d.nodpi && typeof d.nodpi === "object" ? d.nodpi : {}
   var tor = d.tor && typeof d.tor === "object" ? d.tor : {}
   var rotate = Number.isInteger(tor.rotate) && tor.rotate > 0 ? tor.rotate : 0
   return {
@@ -35,6 +37,8 @@ function parseStatus(text) {
     tunnel: bool(sys.tunnel),
     dns: bool(sys.dns),
     ssh: bool(sys.ssh),
+    nodpiWant: nodpi.want === "on" ? "on" : "off",
+    nodpiActive: bool(nodpi.active),
     torActive: bool(tor.active),
     exitWant: str(tor.exit_want, 16),
     exit: str(tor.exit, 16),
@@ -42,6 +46,10 @@ function parseStatus(text) {
     rotate: rotate,
     torIp: str(tor.ip, 64)
   }
+}
+
+function nodpiHeader(s) {
+  return s.nodpiActive ? "NoDPI · active" : "NoDPI · stopped"
 }
 
 function barIcon(s) {
@@ -58,6 +66,7 @@ function tooltip(s) {
   var state = s.tunnel ? " (tunnel up)" : (s.want === "proxy" ? " (tunnel down)" : "")
   var lines = ["System: " + s.want + state]
   if (s.addr !== "") lines.push("Proxy: " + escapeMarkup(s.addr) + (s.reachable ? "" : " — not answering"))
+  lines.push("NoDPI: " + (s.nodpiActive ? "active" : "off"))
   var ipPart = s.torIp !== "" ? " (" + escapeMarkup(s.torIp) + ")" : ""
   lines.push("Tor: " + (s.torActive ? "running, exit " + s.exit + ipPart : "not running"))
   if (s.rotate > 0) lines.push("New identity every " + s.rotate + " s")

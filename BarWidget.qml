@@ -195,6 +195,24 @@ Panel {
           }
         }
 
+        PanelSeparator { foreground: root.bar.foreground }
+
+        PanelSectionHeader {
+          text: Model.nodpiHeader(root.status)
+          foreground: root.bar.foreground
+          fontFamily: root.bar.fontFamily
+        }
+        ChoiceRow {
+          leftText: "Off"; leftIcon: "󰦞"
+          leftActive: root.pendingAction === "nodpi:off" || (root.pendingAction !== "nodpi:on" && !root.status.nodpiActive)
+          leftPending: root.pendingAction === "nodpi:off"
+          rightText: "On"; rightIcon: "󰕥"
+          rightActive: root.pendingAction === "nodpi:on" || (root.pendingAction !== "nodpi:off" && root.status.nodpiActive)
+          rightPending: root.pendingAction === "nodpi:on"
+          onLeftClicked: root.run(["nodpi", "off"], "nodpi:off")
+          onRightClicked: root.run(["nodpi", "on"], "nodpi:on")
+        }
+
         PlainLine {
           text: root.actionRunning && root.pendingAction !== "" ? "Applying changes..."
               : (root.message !== "" ? root.message

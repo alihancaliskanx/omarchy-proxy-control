@@ -10,6 +10,7 @@ vm.runInNewContext(src, M);
 const up = JSON.stringify({
   addr: "10.0.0.1:8000", proxy_reachable: true,
   system: { want: "proxy", tunnel: true, dns: true, ssh: true },
+  nodpi: { want: "on", active: true },
   tor: { active: true, exit_want: "proxy", exit: "proxy", control: true, rotate: 20, ip: "198.51.100.7" },
 });
 
@@ -20,6 +21,8 @@ test("parseStatus reads every field", () => {
   assert.equal(s.reachable, true);
   assert.equal(s.want, "proxy");
   assert.equal(s.tunnel, true);
+  assert.equal(s.nodpiWant, "on");
+  assert.equal(s.nodpiActive, true);
   assert.equal(s.torActive, true);
   assert.equal(s.exit, "proxy");
   assert.equal(s.rotate, 20);
@@ -32,12 +35,24 @@ test("parseStatus rejects garbage", () => {
 });
 
 test("parseStatus coerces wrong types", () => {
-  const s = M.parseStatus(JSON.stringify({ addr: 5, system: { tunnel: "yes" }, tor: { rotate: "x" } }));
+  const s = M.parseStatus(JSON.stringify({ addr: 5, system: { tunnel: "yes" }, nodpi: { want: "yes", active: 1 }, tor: { rotate: "x" } }));
   assert.equal(s.ok, true);
   assert.equal(s.addr, "");
   assert.equal(s.tunnel, false);
+  assert.equal(s.nodpiWant, "off");
+  assert.equal(s.nodpiActive, false);
   assert.equal(s.rotate, 0);
   assert.equal(s.want, "normal");
+});
+
+test("nodpiHeader and tooltip reflect active and stopped states", () => {
+  const off = M.parseStatus(JSON.stringify({ system: { tunnel: true }, nodpi: { want: "off", active: false } }));
+  assert.equal(M.nodpiHeader(off), "NoDPI · stopped");
+  assert.ok(M.tooltip(off).includes("NoDPI: off"));
+
+  const on = M.parseStatus(JSON.stringify({ system: { tunnel: true }, nodpi: { want: "on", active: true } }));
+  assert.equal(M.nodpiHeader(on), "NoDPI · active");
+  assert.ok(M.tooltip(on).includes("NoDPI: active"));
 });
 
 test("parseStatus caps a long address", () => {
