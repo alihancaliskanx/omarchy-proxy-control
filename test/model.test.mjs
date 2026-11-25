@@ -99,3 +99,25 @@ test("rotateArgs", () => {
 test("addrArgs keeps the text as one argument", () => {
   assert.deepEqual(Array.from(M.addrArgs(" 1.2.3.4:80;reboot ")), ["addr", "1.2.3.4:80;reboot"]);
 });
+
+test("parseStatus reads defaults and coerces invalid types", () => {
+  const withDef = M.parseStatus(JSON.stringify({
+    defaults: { saved: true, system: "proxy", nodpi: "on", tor_exit: "proxy", rotate: 30 },
+  }));
+  assert.equal(withDef.defaultsSaved, true);
+  assert.equal(withDef.defaultSystem, "proxy");
+  assert.equal(withDef.defaultNodpi, "on");
+  assert.equal(withDef.defaultTorExit, "proxy");
+  assert.equal(withDef.defaultRotate, 30);
+  assert.equal(M.defaultsSummary(withDef), "proxy · tor proxy · nodpi on · 30 s");
+
+  const badDef = M.parseStatus(JSON.stringify({
+    defaults: { saved: "yes", system: "x", nodpi: 1, tor_exit: 2, rotate: -5 },
+  }));
+  assert.equal(badDef.defaultsSaved, false);
+  assert.equal(badDef.defaultSystem, "normal");
+  assert.equal(badDef.defaultNodpi, "off");
+  assert.equal(badDef.defaultTorExit, "direct");
+  assert.equal(badDef.defaultRotate, 0);
+  assert.equal(M.defaultsSummary(badDef), "normal · tor direct · nodpi off");
+});

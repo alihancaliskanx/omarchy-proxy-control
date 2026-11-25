@@ -213,6 +213,28 @@ Panel {
           onRightClicked: root.run(["nodpi", "on"], "nodpi:on")
         }
 
+        PanelSeparator { foreground: root.bar.foreground }
+
+        PanelSectionHeader {
+          text: root.status.defaultsSaved ? "Defaults · saved" : "Defaults"
+          foreground: root.bar.foreground
+          fontFamily: root.bar.fontFamily
+        }
+        PlainLine {
+          text: Model.defaultsSummary(root.status)
+          opacity: 0.75
+        }
+        ChoiceRow {
+          leftText: "Save current"; leftIcon: "󰆓"
+          leftActive: root.pendingAction === "def:save"
+          leftPending: root.pendingAction === "def:save"
+          rightText: "Apply"; rightIcon: "󰑓"
+          rightActive: root.pendingAction === "def:apply"
+          rightPending: root.pendingAction === "def:apply"
+          onLeftClicked: root.run(["defaults", "save"], "def:save")
+          onRightClicked: root.run(["defaults", "apply"], "def:apply")
+        }
+
         PlainLine {
           text: root.actionRunning && root.pendingAction !== "" ? "Applying changes..."
               : (root.message !== "" ? root.message

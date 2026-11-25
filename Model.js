@@ -24,11 +24,14 @@ function parseStatus(text) {
   }
   if (!d || typeof d !== "object") return { ok: false, addr: "", reachable: false, want: "normal", tunnel: false,
     dns: false, ssh: false, nodpiWant: "off", nodpiActive: false,
-    torActive: false, exitWant: "", exit: "", control: false, rotate: 0, torIp: "" }
+    torActive: false, exitWant: "", exit: "", control: false, rotate: 0, torIp: "",
+    defaultsSaved: false, defaultSystem: "normal", defaultNodpi: "off", defaultTorExit: "direct", defaultRotate: 0 }
   var sys = d.system && typeof d.system === "object" ? d.system : {}
   var nodpi = d.nodpi && typeof d.nodpi === "object" ? d.nodpi : {}
   var tor = d.tor && typeof d.tor === "object" ? d.tor : {}
+  var def = d.defaults && typeof d.defaults === "object" ? d.defaults : {}
   var rotate = Number.isInteger(tor.rotate) && tor.rotate > 0 ? tor.rotate : 0
+  var defRotate = Number.isInteger(def.rotate) && def.rotate > 0 ? def.rotate : 0
   return {
     ok: true,
     addr: str(d.addr, 260),
@@ -44,8 +47,19 @@ function parseStatus(text) {
     exit: str(tor.exit, 16),
     control: bool(tor.control),
     rotate: rotate,
-    torIp: str(tor.ip, 64)
+    torIp: str(tor.ip, 64),
+    defaultsSaved: bool(def.saved),
+    defaultSystem: def.system === "proxy" ? "proxy" : "normal",
+    defaultNodpi: def.nodpi === "on" ? "on" : "off",
+    defaultTorExit: def.tor_exit === "proxy" ? "proxy" : "direct",
+    defaultRotate: defRotate
   }
+}
+
+function defaultsSummary(s) {
+  var parts = [s.defaultSystem, "tor " + s.defaultTorExit, "nodpi " + s.defaultNodpi]
+  if (s.defaultRotate > 0) parts.push(s.defaultRotate + " s")
+  return parts.join(" · ")
 }
 
 function nodpiHeader(s) {
