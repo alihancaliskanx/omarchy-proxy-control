@@ -82,7 +82,8 @@ Panel {
     tooltipText: Model.tooltip(root.status)
     onPressed: function(b) {
       if (b === Qt.MiddleButton) {
-        root.run(["system", root.status.tunnel ? "normal" : "proxy"], root.status.tunnel ? "sys:normal" : "sys:proxy")
+        var toNormal = root.status.want === "proxy"
+        root.run(["system", toNormal ? "normal" : "proxy"], toNormal ? "sys:normal" : "sys:proxy")
       } else {
         root.toggle()
       }
@@ -116,10 +117,10 @@ Panel {
         PanelSectionHeader { text: "System"; foreground: root.bar.foreground; fontFamily: root.bar.fontFamily }
         ChoiceRow {
           leftText: "Normal"; leftIcon: "󰖟"
-          leftActive: root.pendingAction === "sys:normal" || (root.pendingAction !== "sys:proxy" && !root.status.tunnel)
+          leftActive: root.pendingAction === "sys:normal" || (root.pendingAction !== "sys:proxy" && root.status.want !== "proxy")
           leftPending: root.pendingAction === "sys:normal"
           rightText: "Proxy"; rightIcon: "󰒍"
-          rightActive: root.pendingAction === "sys:proxy" || (root.pendingAction !== "sys:normal" && root.status.tunnel)
+          rightActive: root.pendingAction === "sys:proxy" || (root.pendingAction !== "sys:normal" && root.status.want === "proxy")
           rightPending: root.pendingAction === "sys:proxy"
           onLeftClicked: root.run(["system", "normal"], "sys:normal")
           onRightClicked: root.run(["system", "proxy"], "sys:proxy")
@@ -216,7 +217,7 @@ Panel {
         PanelSeparator { foreground: root.bar.foreground }
 
         PanelSectionHeader {
-          text: root.status.defaultsSaved ? "Defaults · saved" : "Defaults"
+          text: root.status.defaultsSaved ? "Boot defaults · saved" : "Boot defaults"
           foreground: root.bar.foreground
           fontFamily: root.bar.fontFamily
         }
@@ -239,7 +240,8 @@ Panel {
           text: root.actionRunning && root.pendingAction !== "" ? "Applying changes..."
               : (root.message !== "" ? root.message
               : (root.status.addr === "" ? "No address set"
-              : (root.status.reachable ? "Proxy answers" : "Proxy does not answer")))
+              : (root.status.want === "proxy" && !root.status.tunnel ? "Waiting for proxy..."
+              : (root.status.reachable ? "Proxy answers" : "Proxy does not answer"))))
           opacity: (root.actionRunning || root.message !== "") ? 1 : 0.65
         }
       }
